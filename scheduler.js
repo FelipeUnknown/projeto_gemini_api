@@ -33,9 +33,8 @@ async function generateAndPublishPost() {
         await createPost({
             title: title,
             content: content,
-            // Descomente a linha abaixo para incluir uma imagem destacada
-            // imagePath: imagePath,
-            status: 'publish', // Use 'draft' para publicar como rascunho
+            imagePath: imagePath,
+            status: 'publish', 
         });
 
     } catch (error) {
@@ -45,7 +44,7 @@ async function generateAndPublishPost() {
 
 // Agende a tarefa. A expressão abaixo roda a cada 5 segundos para teste.
 // Mude para '0 8 * * *' para rodar todos os dias às 8 da manhã.
-cron.schedule('*/5 * * * * *', () => {
+cron.schedule('0 */30 * * * *', () => {
     generateAndPublishPost();
 });
 
