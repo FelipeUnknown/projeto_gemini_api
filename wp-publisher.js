@@ -3,75 +3,92 @@
 const axios = require('axios');
 const fs = require('fs');
 const FormData = require('form-data');
-const path = require('path');
 
-const token = process.env.WP_API_TOKEN;
-const apiUrl = process.env.WP_API_URL;
+const WP_API_URL = process.env.WP_API_URL;
+const WP_API_TOKEN = process.env.WP_API_TOKEN;
 
-/**
- * Faz o upload de uma imagem para a biblioteca de mídia do WordPress.
- * @param {string} imagePath O caminho local da imagem.
- * @returns {Promise<number|null>} O ID da mídia ou null em caso de erro.
- */
-async function uploadMedia(imagePath) {
-    if (!fs.existsSync(imagePath)) {
-        console.error('Erro: Arquivo de imagem não encontrado no caminho:', imagePath);
-        return null;
-    }
-    
+const headers = {
+    'Authorization': `Bearer ${WP_API_TOKEN}`,
+};
+
+async function createPost({ title, content, status = 'draft' }) {
     try {
-        const formData = new FormData();
-        const imageName = path.basename(imagePath);
-        formData.append('file', fs.createReadStream(imagePath), imageName);
-        formData.append('title', imageName);
+        // As linhas abaixo foram comentadas para desabilitar o upload de mídia e o uso da imagem no post.
+        // Isso permite que você continue os testes do resto da automação.
+        // console.log('Iniciando upload de mídia...');
+        // const mediaId = await uploadMedia(imagePath);
 
-        const response = await axios.post(`${apiUrl}/media`, formData, {
-            headers: {
-                'Content-Type': `multipart/form-data; boundary=${formData._boundary}`,
-                'Authorization': `Bearer ${token}`
-            }
-        });
-        
-        console.log(`Upload de mídia "${imageName}" bem-sucedido! ID: ${response.data.id}`);
-        return response.data.id;
-    } catch (error) {
-        console.error('Erro ao fazer upload da imagem:', error.response ? error.response.data.message : error.message);
-        return null;
-    }
-}
-
-/**
- * Cria um novo post no WordPress.
- * @param {object} postData Os dados do post (título, conteúdo, etc.).
- * @returns {Promise<object|null>} O post criado ou null em caso de erro.
- */
-async function createPost({ title, content, imagePath, status = 'publish' }) {
-    try {
-        let featuredMediaId = null;
-        if (imagePath) {
-            featuredMediaId = await uploadMedia(imagePath);
-        }
-
+        console.log('Criando novo post...');
         const postData = {
             title: title,
             content: content,
             status: status,
-            featured_media: featuredMediaId,
+            // A linha 'featured_media' foi comentada.
+            // featured_media: mediaId,
         };
-
-        const response = await axios.post(`${apiUrl}/posts`, postData, {
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`
-            }
-        });
-
-        console.log(`Post "${title}" publicado com sucesso!`);
+        const response = await axios.post(`${WP_API_URL}/posts`, postData, { headers });
         return response.data;
     } catch (error) {
-        console.error('Erro ao criar o post:', error.response ? error.response.data.message : error.message);
+        console.error('Erro ao criar o post:', error.response ? error.response.data : error.message);
+        throw error;
+    }
+}
+
+// A função `uploadMedia` foi completamente comentada.
+/*
+async function uploadMedia(imagePath) {
+    try {
+        const image = fs.createReadStream(imagePath);
+        const form = new FormData();
+        form.append('file', image, 'image.png');
+
+        const mediaHeaders = {
+            'Authorization': `Bearer ${WP_API_TOKEN}`,
+            ...form.getHeaders()
+        };
+
+        const response = await axios.post(`${WP_API_URL}/media`, form, { headers: mediaHeaders });
+        console.log('Imagem enviada com sucesso. ID da mídia:', response.data.id);
+        return response.data.id;
+    } catch (error) {
+        console.error('Erro ao fazer upload da imagem:', error.response ? error.response.data : error.message);
+        throw error;
+    }
+}
+*/
+
+// NOVA FUNÇÃO: Encontrar um post pelo título
+async function findPostByTitle(title) {
+    try {
+        const response = await axios.get(`${WP_API_URL}/posts`, {
+            params: {
+                search: title,
+            },
+            headers: headers
+        });
+        // Retorna o primeiro post encontrado, se houver
+        return response.data.length > 0 ? response.data[0] : null;
+    } catch (error) {
+        console.error('Erro ao procurar o post:', error.response ? error.response.data : error.message);
         return null;
     }
 }
 
-module.exports = { createPost };
+// NOVA FUNÇÃO: Atualizar um post
+async function updatePost(postId, newContent, newTitle) {
+    try {
+        const data = {
+            title: newTitle,
+            content: newContent,
+        };
+        const response = await axios.post(`${WP_API_URL}/posts/${postId}`, data, { headers });
+        console.log(`Post ID ${postId} atualizado com sucesso!`);
+        return response.data;
+    } catch (error) {
+        console.error('Erro ao atualizar o post:', error.response ? error.response.data : error.message);
+        throw error;
+    }
+}
+
+// O módulo de exportação foi atualizado para não exportar a função `uploadMedia`.
+module.exports = { createPost, findPostByTitle, updatePost };
