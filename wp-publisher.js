@@ -4,29 +4,31 @@ const axios = require('axios');
 const fs = require('fs');
 const FormData = require('form-data');
 
+// Carrega as variáveis de ambiente (URL da API e token) do arquivo .env
 const WP_API_URL = process.env.WP_API_URL;
 const WP_API_TOKEN = process.env.WP_API_TOKEN;
 
+// Configura os cabeçalhos de autorização que serão usados em todas as requisições
 const headers = {
     'Authorization': `Bearer ${WP_API_TOKEN}`,
 };
 
+// A função createPost é responsável por criar uma nova postagem no WordPress.
+// Ela recebe o título, conteúdo e status, e envia esses dados para a API.
 async function createPost({ title, content, status = 'draft' }) {
     try {
-        // As linhas abaixo foram comentadas para desabilitar o upload de mídia e o uso da imagem no post.
-        // Isso permite que você continue os testes do resto da automação.
-        // console.log('Iniciando upload de mídia...');
-        // const mediaId = await uploadMedia(imagePath);
-
         console.log('Criando novo post...');
         const postData = {
             title: title,
             content: content,
             status: status,
-            // A linha 'featured_media' foi comentada.
-            // featured_media: mediaId,
         };
         const response = await axios.post(`${WP_API_URL}/posts`, postData, { headers });
+        // ** ID da Postagem **
+        // A API do WordPress retorna um objeto JSON com os detalhes do novo post,
+        // incluindo um ID único e exclusivo. Este ID é crucial para identificar
+        // o post e permitir futuras atualizações ou exclusões.
+        console.log(`Novo post criado com sucesso! ID da postagem: ${response.data.id}`);
         return response.data;
     } catch (error) {
         console.error('Erro ao criar o post:', error.response ? error.response.data : error.message);
@@ -34,7 +36,8 @@ async function createPost({ title, content, status = 'draft' }) {
     }
 }
 
-// A função `uploadMedia` foi completamente comentada.
+// A função uploadMedia foi completamente comentada, pois a funcionalidade
+// de upload de imagens está desativada para evitar erros.
 /*
 async function uploadMedia(imagePath) {
     try {
@@ -57,7 +60,9 @@ async function uploadMedia(imagePath) {
 }
 */
 
-// NOVA FUNÇÃO: Encontrar um post pelo título
+// A função findPostByTitle busca por uma postagem existente usando o título.
+// Ela usa o parâmetro 'search' da API do WordPress para encontrar posts
+// que contêm o título especificado.
 async function findPostByTitle(title) {
     try {
         const response = await axios.get(`${WP_API_URL}/posts`, {
@@ -66,7 +71,7 @@ async function findPostByTitle(title) {
             },
             headers: headers
         });
-        // Retorna o primeiro post encontrado, se houver
+        // Retorna o primeiro post encontrado, ou null se nenhum for encontrado.
         return response.data.length > 0 ? response.data[0] : null;
     } catch (error) {
         console.error('Erro ao procurar o post:', error.response ? error.response.data : error.message);
@@ -74,7 +79,8 @@ async function findPostByTitle(title) {
     }
 }
 
-// NOVA FUNÇÃO: Atualizar um post
+// A função updatePost é usada para atualizar o conteúdo e/ou o título
+// de um post existente, usando o ID único da postagem.
 async function updatePost(postId, newContent, newTitle) {
     try {
         const data = {
@@ -90,5 +96,5 @@ async function updatePost(postId, newContent, newTitle) {
     }
 }
 
-// O módulo de exportação foi atualizado para não exportar a função `uploadMedia`.
+// Exporta as funções para que possam ser utilizadas por outros arquivos (como o scheduler.js)
 module.exports = { createPost, findPostByTitle, updatePost };
